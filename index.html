@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset='utf-8' />
-    <title>Display a popup on hover</title>
+    <title>Wild & Scenic Designations of the John D. Dingell, Jr. Conservation, Management, and Recreation Act </title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.1/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.1/mapbox-gl.css' rel='stylesheet' />
@@ -14,56 +14,145 @@
 <body>
 
 <style>
-    .mapboxgl-popup {
-        max-width: 400px;
-        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    }
+.mapboxgl-popup {
+    max-width: 400px;
+		min-width: 300px;
+    font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+}
+.mapboxgl-popup h2 {
+	text-align: right;
+}
+dl {
+	border-top: 1px solid;
+	padding-top: 12px;
+  display: grid;
+  grid-template-columns: max-content auto;
+}
+
+dt {
+  grid-column-start: 1;
+	font-weight: bold;
+}
+
+dd {
+  grid-column-start: 2;
+	text-align:right;
+}
 </style>
 <div id='map'></div>
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqdTAwdGN6cTJneGgzem1wMmxuNTlubm8ifQ.QcFsCLQsxc4SxM6pY4f9aw';
+mapboxgl.accessToken = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ';
 
 var map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/outdoors-v9',
-  center: { lng: -98.41995522934099, lat: 40.20694226322203 },
-  zoom: 3.8,
+	container: 'map',
+	style: 'mapbox://styles/mapbox/outdoors-v9',
+	center: {
+		lng: -98.41995522934099,
+		lat: 40.20694226322203
+	},
+	zoom: 3.8,
 });
+
+
+var hoveredStateId = null;
 
 map.on('load', function() {
-	
-  map.addSource("wild-and-scenic-rivers", {
+	const geoJsonUrl = 'https://cors-anywhere.herokuapp.com/https://github.com/visualizing-wildland/dingell-bill-wild-and-scenics/raw/master/dingell_bill_wsrs.geojson';
+	map.addSource('dingell-bill-wsrs', {
 		type: 'geojson',
-		data: './dingell_bill_wsrs.geojson',
+		data: geoJsonUrl,
+		generateId: true
 	});
 
+	map.addLayer({
+		id: 'dingell-bill-wsrs',
+		type: 'line',
+		source: 'dingell-bill-wsrs',
+		layout: {
+			'line-cap': 'round',
+			'line-join': 'round',
+		},
+		paint: {
+			"line-width": 2.5,
+			"line-gap-width": [
+				"interpolate", ["linear"],
+				["zoom"],
+				0,
+				0,
+				9,
+				1,
+				22,
+				5
+			],
+			"line-opacity": 0.9,
+			"line-color": [
+				"case", ["boolean", ["feature-state", "hover"], false],
+				"#0014ad",
+				"#5266ff",
+			]
+		},
+	});
+
+	// create popup
 	var popup = new mapboxgl.Popup({
-  	closeButton: false,
-    closeOnClick: false
-  });
-/*
-  map.on('mouseenter', 'oregonwildlands-wsr', function(e) {
-    // Change the cursor style as a UI indicator.
-    map.getCanvas().style.cursor = 'pointer';
-		var coordinates = e.lngLat;
-    var description = getFeatureDescription(e.features[0]);
-
-    // Populate the popup and set its coordinates
-    // based on the feature found.
-    popup.setLngLat(coordinates)
-        .setHTML(description)
-        .addTo(map);
+		closeButton: false,
+		closeOnClick: false
 	});
-  map.on('mouseleave', 'oregonwildlands-wsr', function() {
-      map.getCanvas().style.cursor = '';
-      popup.remove();
-  });
-	*/
+
+	map.on('mouseenter', 'dingell-bill-wsrs', function(e) {
+		// Change the cursor style as a UI indicator.
+		map.getCanvas().style.cursor = 'pointer';
+		const coordinates = e.lngLat;
+		const description = getFeatureDescription(e.features[0]);
+		if (hoveredStateId) {
+			map.setFeatureState({
+				source: 'dingell-bill-wsrs',
+				id: hoveredStateId
+			}, {
+				hover: false
+			});
+		}
+
+		hoveredStateId = e.features[0].id;
+		map.setFeatureState({
+			source: 'dingell-bill-wsrs',
+			id: hoveredStateId,
+		}, {
+			hover: true
+		});
+
+		// Populate the popup and set its coordinates
+		// based on the feature found.
+		popup.setLngLat(coordinates)
+			.setHTML(description)
+			.addTo(map);
+	});
+
+	// close popup when mouse leaves
+	map.on('mouseleave', 'dingell-bill-wsrs', function() {
+		map.getCanvas().style.cursor = '';
+		popup.remove();
+		map.removeFeatureState({
+			source: 'dingell-bill-wsrs'
+		});
+	});
 });
 
-var getFeatureDescription = function(feature) {
-	return "hello";
+const getFeatureDescription = function(feature) {
+	const props = feature.properties;
+	return `
+<div class="river-details">
+	<h2>${props['River_Name']}</h2>
+	<dl>
+		<dt>Designations</dt>
+		<dd>${props['Designatio'].replace(/,/g, ', ')}
+		<dt>Length</dt>
+		<dd>${Math.round(props['Length_Mil'] * 10)/10} miles</dd>
+	</dl>
+</div>
+	`;
 };
+
 </script>
 
 </body>
