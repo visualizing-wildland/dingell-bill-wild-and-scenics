@@ -140,14 +140,22 @@ map.on('load', function() {
 
 const getFeatureDescription = function(feature) {
 	const props = feature.properties;
+  let length;
+  if (props['Length']) {
+    length = `
+		<dt>Length</dt>
+		<dd>${Math.round(props['Length'] * 10)/10} miles</dd>
+    `;
+  } else {
+    length = '';
+  }
 	return `
 <div class="river-details">
 	<h2>${props['River_Name']}</h2>
 	<dl>
 		<dt>Designations</dt>
 		<dd>${props['Designation'].replace(/,/g, ', ')}
-		<dt>Length</dt>
-		<dd>${Math.round(props['Length'] * 10)/10} miles</dd>
+    ${length}
 	</dl>
 </div>
 	`;
