@@ -93,6 +93,9 @@ map.on('load', function() {
 		},
 	});
 
+  // hard coding bounds to show continental US
+  map.fitBounds([[-70.412, 49.54], [-125.252, 29.352]]);
+
 	// create popup
 	var popup = new mapboxgl.Popup({
 		closeButton: false,
